@@ -1,6 +1,8 @@
-﻿using Microsoft.Xna.Framework;
+﻿using ASC.Models;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
 
 namespace ASC
 {
@@ -11,20 +13,68 @@ namespace ASC
     {
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
+        SpriteManager spriteManager;
 
-        Texture2D Texture;
+        Texture2D ringsTexture;
+        Texture2D skullTexture;
+        Texture2D plusTexture;
 
-        Point frameSize = new Point(75, 75);
-        Point currentFrame = new Point(0, 0);
-        Point sheetSize = new Point(6, 8);
+        Point ringsFrameSize = new Point(75, 75);
+        Point ringsCurrentFrame = new Point(0, 0);
+        Point ringsSheetSize = new Point(6, 8);
 
-        int timeSinceLastFrame = 0;
-        int millisecondsPerFrame = 50;
+        Point skullFrameSize = new Point(75, 75);
+        Point skullCurrentFrame = new Point(0, 0);
+        Point skullSheetSize = new Point(6, 8);
+
+        Point plusFrameSize = new Point(75, 75);
+        Point plusCurrentFrame = new Point(0, 0);
+        Point plusSheetSize = new Point(6, 4);
+
+        int ringsTimeSinceLastFrame = 0;
+        int ringsMillisecondsPerFrame = 50;
+
+        int skullTimeSinceLastFrame = 0;
+        const int skullMillisecondsPerFrame = 30;
+
+        int plusTimeSinceLastFrame = 0;
+        int plusMillisecondsPerFrame = 50;
+
+        Vector2 ringsPosition = Vector2.Zero;
+        const float ringsSpeed = 6;
+        Vector2 skullPosition = new Vector2(100, 100);
+        Vector2 plusPosition = new Vector2(300, 300);
+
+        MouseState prevMouseState;
+
+        int ringsCollisionRectOffset = 10;
+        int skullCollisionRectOffset = 10;
+        int plusCollisionRectOffset = 10;
+
+        protected bool Collide()
+        {
+            Rectangle ringsRect = new Rectangle((int)ringsPosition.X + ringsCollisionRectOffset, 
+                (int)ringsPosition.Y + ringsCollisionRectOffset, 
+                ringsFrameSize.X - (ringsCollisionRectOffset * 2), 
+                ringsFrameSize.Y - (ringsCollisionRectOffset * 2));
+            Rectangle skullRect = new Rectangle((int)skullPosition.X + skullCollisionRectOffset,
+                (int)skullPosition.Y + skullCollisionRectOffset, 
+                skullFrameSize.X - (skullCollisionRectOffset * 2), 
+                skullFrameSize.Y - (skullCollisionRectOffset * 2));
+            Rectangle plusRect = new Rectangle((int)plusPosition.X + plusCollisionRectOffset,
+                (int)plusPosition.Y + plusCollisionRectOffset,
+                plusFrameSize.X - (plusCollisionRectOffset * 2),
+                plusFrameSize.Y - (plusCollisionRectOffset * 2));
+            return ringsRect.Intersects(skullRect);
+
+        }
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+            IsMouseVisible = true;
         }
 
         /// <summary>
@@ -36,6 +86,8 @@ namespace ASC
         protected override void Initialize()
         {
             // TODO: Add your initialization logic here
+            spriteManager = new SpriteManager(this);
+            Components.Add(spriteManager);
 
             base.Initialize();
         }
@@ -50,7 +102,9 @@ namespace ASC
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
             // TODO: use this.Content to load your game content here
-            Texture = Content.Load<Texture2D>("threerings");
+            ringsTexture = Content.Load<Texture2D>("threerings");
+            skullTexture = Content.Load<Texture2D>("skullball");
+            plusTexture = Content.Load<Texture2D>("plus");
         }
 
         /// <summary>
@@ -73,15 +127,79 @@ namespace ASC
                 Exit();
 
             // TODO: Add your update logic here
-            
-            ++currentFrame.X;
-            if (currentFrame.X >= sheetSize.X)
+            ringsTimeSinceLastFrame += gameTime.ElapsedGameTime.Milliseconds;
+            if (ringsTimeSinceLastFrame > ringsMillisecondsPerFrame)
             {
-                currentFrame.X = 0;
-                ++currentFrame.Y;
-                if (currentFrame.Y >= sheetSize.Y)
-                    currentFrame.Y = 0;
+                ringsTimeSinceLastFrame -= ringsMillisecondsPerFrame;
+                ++ringsCurrentFrame.X;
+                if (ringsCurrentFrame.X >= ringsSheetSize.X)
+                {
+                    ringsCurrentFrame.X = 0;
+                    ++ringsCurrentFrame.Y;
+                    if (ringsCurrentFrame.Y >= ringsSheetSize.Y)
+                        ringsCurrentFrame.Y = 0;
+                }
             }
+
+            skullTimeSinceLastFrame += gameTime.ElapsedGameTime.Milliseconds;
+            if (skullTimeSinceLastFrame > skullMillisecondsPerFrame)
+            {
+                skullTimeSinceLastFrame -= skullMillisecondsPerFrame;
+                ++skullCurrentFrame.X;
+                if (skullCurrentFrame.X >= skullSheetSize.X)
+                {
+                    skullCurrentFrame.X = 0;
+                    ++skullCurrentFrame.Y;
+                    if (skullCurrentFrame.Y >= skullSheetSize.Y)
+                        skullCurrentFrame.Y = 0;
+                }
+            }
+
+            plusTimeSinceLastFrame += gameTime.ElapsedGameTime.Milliseconds;
+            if ( plusTimeSinceLastFrame > plusMillisecondsPerFrame)
+            {
+                plusTimeSinceLastFrame -= plusMillisecondsPerFrame;
+                ++plusCurrentFrame.X;
+                if (plusCurrentFrame.X >= plusSheetSize.X)
+                {
+                    plusCurrentFrame.X = 0;
+                    ++plusCurrentFrame.Y;
+                    if (plusCurrentFrame.Y >= plusSheetSize.Y)
+                    {
+                        plusCurrentFrame.Y = 0;
+                    }
+                }
+
+            }
+
+            KeyboardState keyboardState = Keyboard.GetState();
+            if (keyboardState.IsKeyDown(Keys.Left))
+                ringsPosition.X -= ringsSpeed;
+            if (keyboardState.IsKeyDown(Keys.Right))
+                ringsPosition.X += ringsSpeed;
+            if (keyboardState.IsKeyDown(Keys.Up))
+                ringsPosition.Y -= ringsSpeed;
+            if (keyboardState.IsKeyDown(Keys.Down))
+                ringsPosition.Y += ringsSpeed;
+
+            MouseState mouseState = Mouse.GetState();
+            if (mouseState.X != prevMouseState.X || 
+                mouseState.Y != prevMouseState.Y)
+                ringsPosition = new Vector2(mouseState.X, mouseState.Y);
+            prevMouseState = mouseState;
+
+            GamePadState gamepadState = GamePad.GetState(PlayerIndex.One);
+            ringsPosition.X += ringsSpeed * gamepadState.ThumbSticks.Left.X;
+            ringsPosition.Y -= ringsSpeed * gamepadState.ThumbSticks.Left.Y;
+
+            if (ringsPosition.X < 0) ringsPosition.X = 0;
+            if (ringsPosition.Y < 0) ringsPosition.Y = 0;
+            if (ringsPosition.X > Window.ClientBounds.Width - ringsFrameSize.X)
+                ringsPosition.X = Window.ClientBounds.Width - ringsFrameSize.X;
+            if (ringsPosition.Y > Window.ClientBounds.Height - ringsFrameSize.Y)
+                ringsPosition.Y = Window.ClientBounds.Height - ringsFrameSize.Y;
+
+            if (Collide()) Exit();
 
             base.Update(gameTime);
         }
@@ -97,13 +215,44 @@ namespace ASC
             // TODO: Add your drawing code here
             spriteBatch.Begin(SpriteSortMode.FrontToBack, BlendState.AlphaBlend);
 
-            spriteBatch.Draw(Texture, Vector2.Zero,
-                new Rectangle(currentFrame.X * frameSize.X,
-                currentFrame.Y * frameSize.Y,
-                frameSize.X,
-                frameSize.Y),
+            spriteBatch.Draw(
+                ringsTexture, 
+                ringsPosition,
+                new Rectangle(
+                    ringsCurrentFrame.X * ringsFrameSize.X,
+                    ringsCurrentFrame.Y * ringsFrameSize.Y,
+                    ringsFrameSize.X,
+                    ringsFrameSize.Y),
+                Color.White, 
+                0, 
+                Vector2.Zero,
+                1, 
+                SpriteEffects.None,
+                0);
+
+            spriteBatch.Draw(skullTexture, skullPosition,
+                new Rectangle(skullCurrentFrame.X * skullFrameSize.X,
+                skullCurrentFrame.Y * skullFrameSize.Y,
+                skullFrameSize.X,
+                skullFrameSize.Y),
                 Color.White, 0, Vector2.Zero,
                 1, SpriteEffects.None, 0);
+
+            spriteBatch.Draw(
+                plusTexture,
+                plusPosition,
+                new Rectangle(
+                    plusCurrentFrame.X * plusFrameSize.X,
+                    plusCurrentFrame.Y * plusFrameSize.Y,
+                    plusFrameSize.X,
+                    plusFrameSize.Y),
+                Color.White,
+                0,
+                Vector2.Zero,
+                1,
+                SpriteEffects.None,
+                0);
+
             spriteBatch.End();
 
 
