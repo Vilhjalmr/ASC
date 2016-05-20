@@ -72,6 +72,10 @@ namespace ASC
                 Exit();
 
             // TODO: Add your update logic here
+            if (spriteManager.gameOver)
+            {
+                this.Exit();
+            }
 
             base.Update(gameTime);
         }
